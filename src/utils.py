@@ -6,6 +6,7 @@ import pandas as pd
 import streamlit as st
 import plotly.figure_factory as ff
 from typing import Tuple
+from src.config import HEATMAP_WIDTH, HEATMAP_HEIGHT
 
 @st.cache_data
 def compute_correlation(df: pd.DataFrame, cols: Tuple[str, ...]) -> pd.DataFrame:
@@ -13,11 +14,7 @@ def compute_correlation(df: pd.DataFrame, cols: Tuple[str, ...]) -> pd.DataFrame
     return df[list(cols)].corr()
 
 @st.cache_data
-def build_heatmap(corr_df: pd.DataFrame):
-    """
-    Строит аннотированную тепловую карту по корреляционной матрице.
-    Возвращает объект Figure plotly (тип не аннотирован для совместимости).
-    """
+def build_heatmap(corr_df, width: int = HEATMAP_WIDTH, height: int = HEATMAP_HEIGHT):
     fig = ff.create_annotated_heatmap(
         z=corr_df.round(3).values,
         x=corr_df.columns.tolist(),
@@ -26,5 +23,5 @@ def build_heatmap(corr_df: pd.DataFrame):
         zmin=-1, zmax=1,
         annotation_text=corr_df.round(2).values
     )
-    fig.update_layout(title="Матрица корреляций", width=700, height=600)
+    fig.update_layout(title="Матрица корреляций", width=width, height=height)
     return fig

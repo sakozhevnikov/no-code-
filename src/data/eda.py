@@ -9,6 +9,8 @@ import plotly.express as px
 import plotly.figure_factory as ff
 from typing import List, Tuple
 from src.utils import compute_correlation, build_heatmap
+from src.config import HISTOGRAM_NBINS, HEATMAP_WIDTH, HEATMAP_HEIGHT
+
 
 # --- Вспомогательные кэшируемые функции ---
 
@@ -37,7 +39,7 @@ def compute_correlation(df: pd.DataFrame, cols: Tuple[str, ...]) -> pd.DataFrame
     return df[list(cols)].corr()
 
 @st.cache_data
-def build_histogram(df: pd.DataFrame, col: str, nbins: int = 30):
+def build_histogram(df: pd.DataFrame, col: str, nbins: int = HISTOGRAM_NBINS):
     """Строит и возвращает объект Figure histogram (кэшируемо)."""
     fig = px.histogram(df, x=col, nbins=nbins, title=f"Гистограмма: {col}")
     fig.update_layout(bargap=0.1)
@@ -122,7 +124,7 @@ class EDAAnalyzer:
 
         corr = compute_correlation(self.df, tuple(valid_cols))
         fig = build_heatmap(corr)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
 
     def run_full_eda(self) -> None:
         """Показывает базовую информацию (без графиков)."""

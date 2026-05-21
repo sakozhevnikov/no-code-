@@ -1,29 +1,19 @@
 """
 Модуль загрузки табличных данных.
-Поддерживает CSV и XLSX.
+Поддерживаемые форматы берутся из конфигурации.
 """
 import pandas as pd
 from typing import Tuple
+from src.config import SUPPORTED_FILE_TYPES   # <-- добавлен импорт
 
 def load_uploaded_file(uploaded_file) -> Tuple[pd.DataFrame, str]:
-    """
-    Загружает DataFrame из объекта UploadedFile библиотеки Streamlit.
-
-    Args:
-        uploaded_file: объект, возвращаемый st.file_uploader.
-
-    Returns:
-        tuple: (DataFrame, тип_файла).
-    """
     filename = uploaded_file.name.lower()
-    if filename.endswith('.csv'):
+    if filename.endswith('.csv') and 'csv' in SUPPORTED_FILE_TYPES:
         df = pd.read_csv(uploaded_file)
         file_type = 'csv'
-    elif filename.endswith('.xlsx'):
-        # openpyxl – стандартный движок для xlsx
+    elif filename.endswith('.xlsx') and 'xlsx' in SUPPORTED_FILE_TYPES:
         df = pd.read_excel(uploaded_file, engine='openpyxl')
         file_type = 'xlsx'
     else:
         raise ValueError(f"Неподдерживаемый формат файла: {filename}")
-
     return df, file_type

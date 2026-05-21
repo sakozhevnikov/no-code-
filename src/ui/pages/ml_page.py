@@ -1,6 +1,7 @@
 """
 Страница машинного обучения: классификация, регрессия, кластеризация.
 С автоматическим подбором гиперпараметров через Optuna.
+Все параметры по умолчанию централизованы в src/config.py.
 """
 import streamlit as st
 import pandas as pd
@@ -19,6 +20,12 @@ from ..utils.validators import (
     check_data_loaded, check_target_selected, check_features_selected,
     check_no_missing_in_target
 )
+from src.config import (
+    TEST_SIZE, RANDOM_STATE,
+    DEFAULT_N_ESTIMATORS, DEFAULT_MAX_DEPTH,
+    DEFAULT_N_CLUSTERS, DEFAULT_EPS, DEFAULT_MIN_SAMPLES,
+    OPTUNA_N_TRIALS
+)
 
 def render() -> None:
     st.title("🤖 Машинное обучение")
@@ -28,9 +35,11 @@ def render() -> None:
 
     # Выбор типа задачи
     task = st.selectbox("Тип задачи:", ("Классификация", "Регрессия", "Кластеризация"))
-    # Сброс меток кластеров, если переключились с кластеризации на другую задачу
+    
+    # Сброс меток кластеров, если переключились с кластеризации
     if task != "Кластеризация" and 'cluster_labels' in st.session_state:
         del st.session_state['cluster_labels']
+    
     numeric_cols = [col for col in df.columns if pd.api.types.is_numeric_dtype(df[col])]
 
     if task == "Кластеризация":
@@ -48,21 +57,21 @@ def render() -> None:
     else:
         model_display_name = st.selectbox("Модель:", ("KMeans", "DBSCAN"))
 
-    # Гиперпараметры (ручной ввод)
+    # Гиперпараметры (ручной ввод) со значениями по умолчанию из конфига
     st.subheader("⚙️ Гиперпараметры")
     params = {}
 
     if model_display_name in ("RandomForestClassifier", "RandomForestRegressor",
                               "GradientBoostingClassifier", "GradientBoostingRegressor"):
-        params['n_estimators'] = st.slider("n_estimators", 10, 500, 100)
-        params['max_depth'] = st.slider("max_depth", 1, 50, 5)
+        params['n_estimators'] = st.slider("n_estimators", 10, 500, DEFAULT_N_ESTIMATORS)
+        params['max_depth'] = st.slider("max_depth", 1, 50, DEFAULT_MAX_DEPTH)
 
     elif model_display_name == "KMeans":
-        params['n_clusters'] = st.slider("n_clusters", 2, 20, 3)
+        params['n_clusters'] = st.slider("n_clusters", 2, 20, DEFAULT_N_CLUSTERS)
 
     elif model_display_name == "DBSCAN":
-        params['eps'] = st.slider("eps", 0.1, 10.0, 0.5)
-        params['min_samples'] = st.slider("min_samples", 2, 20, 5)
+        params['eps'] = st.slider("eps", 0.1, 10.0, DEFAULT_EPS)
+        params['min_samples'] = st.slider("min_samples", 2, 20, DEFAULT_MIN_SAMPLES)
 
     # Optuna
     use_optuna = st.checkbox("🔍 Использовать автоматический подбор гиперпараметров (Optuna)")
@@ -89,10 +98,10 @@ def render() -> None:
             else:
                 y = None
 
-            # Разделение train/test для контролируемых задач
+            # Разделение train/test с параметрами из конфига
             if task != "Кластеризация":
                 X_train, X_test, y_train, y_test = train_test_split(
-                    X, y, test_size=0.2, random_state=42
+                    X, y, test_size=TEST_SIZE, random_state=RANDOM_STATE
                 )
             else:
                 X_train, X_test, y_train, y_test = X, None, None, None
@@ -105,7 +114,7 @@ def render() -> None:
                         model_name=model_display_name,
                         X=X_train,
                         y=y_train,
-                        n_trials=10
+                        n_trials=OPTUNA_N_TRIALS
                     )
                 show_success(f"Optuna завершена. Лучший score: {best_score:.4f}")
                 st.json(best_params)
@@ -127,7 +136,6 @@ def render() -> None:
                 metrics = evaluate_clustering(X_train, labels)
                 show_clustering_metrics(metrics)
 
-                # Если метрика N/A – предупреждение
                 if metrics.get("Silhouette Score") is None:
                     show_warning(
                         "Silhouette Score недоступен: модель выделила 0 или 1 кластер. "
@@ -136,14 +144,12 @@ def render() -> None:
 
                 show_cluster_plot(X_train, labels)
 
-                # Распределение по кластерам
                 import numpy as np
                 unique, counts = np.unique(labels, return_counts=True)
                 st.subheader("📊 Количество объектов в каждом кластере")
                 cluster_names = ["Шум (-1)" if u == -1 else f"Кластер {u}" for u in unique]
                 st.table({"Кластер": cluster_names, "Количество": counts})
 
-                # Сохраняем метки для последующего добавления
                 st.session_state['cluster_labels'] = labels
             else:
                 y_pred = model.predict(X_test)
@@ -159,7 +165,7 @@ def render() -> None:
         except Exception as e:
             show_error(f"Ошибка обучения: {e}")
 
-    # Кнопка для добавления меток кластеров (вне основного блока)
+    # Кнопка сохранения меток кластеров (только для задачи кластеризации)
     if task == "Кластеризация" and 'cluster_labels' in st.session_state:
         if st.button("💾 Добавить метки кластеров в данные"):
             df = get_data()
@@ -167,11 +173,3 @@ def render() -> None:
             set_data(df)
             show_success("Столбец 'cluster' добавлен. Можно использовать в анализе.")
             del st.session_state['cluster_labels']
-
-    # Просмотр текущей модели
-    if st.button("📋 Показать текущую модель"):
-        model, name = get_model()
-        if model:
-            st.write(f"Обученная модель: **{name}**")
-        else:
-            show_info("Модель ещё не обучена.")
