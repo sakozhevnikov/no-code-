@@ -21,40 +21,57 @@ def render() -> None:
     numeric_cols = [col for col in df.columns if pd.api.types.is_numeric_dtype(df[col])]
     categorical_cols = [col for col in df.columns if not pd.api.types.is_numeric_dtype(df[col])]
 
-    # Пропуски
-    with st.expander("💧 Пропущенные значения"):
-        missing_method = st.selectbox(
-            "Метод обработки пропусков:",
-            ("Удалить строки с пропусками", "Удалить столбцы с пропусками",
-             "Заполнить средним", "Заполнить медианой", "Заполнить модой")
+    # --- Удаление пропусков ---
+    with st.expander("🗑️ Удаление процентов пропусков"):
+        delete_method = st.selectbox(
+            "Метод удаления:",
+            ("Удалить строки с пропусками", "Удалить столбцы с пропусками")
         )
-        threshold_pct = st.slider("Порог пропусков (%):", 0, 100, 0, 1,
-                                  help="Удаление/заполнение применяется, если доля пропусков >= порога.")
+        threshold_pct = st.slider(
+            "Порог пропусков (%):", 0, 100, 0, 1,
+            help="Удаляются строки/столбцы, в которых доля пропусков >= порога."
+        )
         threshold = threshold_pct / 100.0
 
-        if missing_method != "Удалить столбцы с пропусками":
-            target_cols = st.multiselect("Выберите столбцы:", df.columns.tolist())
+        if delete_method == "Удалить строки с пропусками":
+            target_cols = st.multiselect(
+                "Выберите столбцы (если не выбрано — все):",
+                df.columns.tolist()
+            )
         else:
             target_cols = None
 
-        if st.button("Применить обработку пропусков"):
-            if df.isnull().sum().sum() == 0:
-                show_info("Пропуски отсутствуют.")
+        if st.button("Применить удаление"):
+            handler = PreprocessingFactory.get_handler("missing")
+            method = "delete_rows" if delete_method == "Удалить строки с пропусками" else "delete_columns"
+            df_new = handler.process(df, method=method, columns=target_cols, threshold=threshold)
+            set_data(df_new)
+            show_success("Удаление выполнено. Данные обновлены.")
+            show_head(df_new)
+
+    # --- Заполнение пропусков ---
+    with st.expander("🧪 Заполнение пропусков"):
+        fill_method = st.selectbox(
+            "Метод заполнения:",
+            ("Заполнить средним", "Заполнить медианой", "Заполнить модой")
+        )
+        fill_cols = st.multiselect("Выберите столбцы для заполнения:", df.columns.tolist())
+        if st.button("Применить заполнение"):
+            if not fill_cols:
+                show_error("Выберите хотя бы один столбец.")
             else:
                 handler = PreprocessingFactory.get_handler("missing")
-                method_map = {
-                    "Удалить строки с пропусками": "delete_rows",
-                    "Удалить столбцы с пропусками": "delete_columns",
-                    "Заполнить средним": "fill_mean",
-                    "Заполнить медианой": "fill_median",
-                    "Заполнить модой": "fill_mode"
-                }
-                method = method_map[missing_method]
-                df_new = handler.process(df, method=method, columns=target_cols, threshold=threshold)
+                if fill_method == "Заполнить средним":
+                    method = "fill_mean"
+                elif fill_method == "Заполнить медианой":
+                    method = "fill_median"
+                else:
+                    method = "fill_mode"
+                df_new = handler.process(df, method=method, columns=fill_cols)
                 set_data(df_new)
-                show_success("Обработка выполнена. Данные обновлены.")
+                show_success("Заполнение выполнено. Данные обновлены.")
                 show_head(df_new)
-
+    
     # Дубликаты
     with st.expander("♊ Дубликаты"):
         dup_subset = st.multiselect(
