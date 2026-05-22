@@ -4,8 +4,7 @@
 import streamlit as st
 import pandas as pd
 from ...data.eda import EDAAnalyzer
-from ...preprocessing.imbalance_analyzer import ImbalanceAnalyzer
-from ..components.notifications import show_warning, show_info
+from ..components.notifications import show_info
 from ..components.data_preview import show_head, show_tail, show_full
 from ..utils.session import get_data
 from ..utils.validators import check_data_loaded
@@ -72,7 +71,3 @@ def render() -> None:
                 show_correlation_heatmap(df, corr_cols)
         else:
             show_info("Недостаточно числовых признаков.")
-
-    # Баланс классов
-    with st.expander("⚖️ Баланс классов", expanded=False):
-        ImbalanceAnalyzer.show(df, analyzer.categorical_cols)

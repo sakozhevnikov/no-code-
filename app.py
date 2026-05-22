@@ -3,11 +3,7 @@
 """
 import streamlit as st
 from src.ui.components.sidebar import render_sidebar
-from src.ui.pages import ml_page
-from src.ui.pages import (
-    upload_page, eda_page, preprocessing_page,
-    deployment_page
-)
+from src.ui.pages import upload_page, eda_page, preprocessing_page, ml_page
 
 st.set_page_config(
     page_title="Интеллектуальный EDA",
@@ -25,5 +21,3 @@ elif page == "🧹 Предобработка данных":
     preprocessing_page.render()
 elif page == "🤖 Машинное обучение":
     ml_page.render()
-elif page == "🚀 Масштабируемость системы":
-    deployment_page.render()

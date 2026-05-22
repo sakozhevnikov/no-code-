@@ -44,18 +44,6 @@ def show_boxplot(df: pd.DataFrame, col: str) -> None:
     fig = px.box(df, y=col, title=f"Box plot: {col}")
     st.plotly_chart(fig, width='stretch')
 
-def show_class_balance(df: pd.DataFrame, target: str) -> None:
-    if target not in df.columns:
-        st.error(f"Столбец {target} не найден.")
-        return
-    counts = df[target].value_counts().reset_index()
-    counts.columns = [target, 'count']
-    fig = px.bar(counts, x=target, y='count',
-                 title=f"Распределение классов для {target}",
-                 text='count')
-    fig.update_traces(textposition='outside')
-    st.plotly_chart(fig, width='stretch')
-
 def show_confusion_matrix(y_true, y_pred) -> None:
     """
     Отображает матрицу ошибок:
